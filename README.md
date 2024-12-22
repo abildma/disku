@@ -11,7 +11,7 @@ The program uses multi-threading to speed up directory scanning and includes sev
 - **Delete files and folders** directly from the interface.
 - **Backtrack to previous scans** to explore different directories.
 - **Multi-threaded scanning** for faster results on large directories.
-- 
+
 ### Running the Program
 Use CMD/Powershell and run the disku.exe
 1. **Choose the directory to scan**:
