@@ -39,6 +39,7 @@ def display_help():
     print("  1  Entire PC")
     print("  2  User folder")
     print("  3  External drives")
+    print("  4  Search for file types")
     print("  q  Quit")
     print("  b  Back to previous scan")
     print("-" * 40)
@@ -90,10 +91,20 @@ def scan_directory(directory_to_scan):
     # Print summary with numbered options for further exploration
     print("\n\nSummary:")
     for i, (directory, size, largest_item) in enumerate(directory_data):
-        print(f"{i+1:>2}. {directory:<48} | {format_size(size):>10} | Largest File: {largest_item[0]:<50} ({format_size(largest_item[1])})")
+        print(f"{i+1:>2}. {directory:<48} | {format_size(size):>10} | Largest Item: {largest_item[0]:<50} ({format_size(largest_item[1])})")
     print("-" * 40)
 
     return directory_data
+
+# Function to search for files by type
+def search_files_by_type(directory_to_scan, file_extension):
+    matching_files = []
+    for root, dirs, files in os.walk(directory_to_scan):
+        for file in files:
+            if file.endswith(file_extension):
+                file_path = os.path.join(root, file)
+                matching_files.append(file_path)
+    return matching_files
 
 # Function to delete a file or directory
 def delete_item(item_path):
@@ -130,6 +141,15 @@ if __name__ == "__main__":
                 except ValueError:
                     print("Invalid input. Please enter a number.")
                     continue
+            elif option == "4":
+                file_extension = input("Enter the file extension to search for (e.g., .txt): ")
+                directory_to_scan = input("Enter the directory to search for file types (leave empty for entire PC): ") or "C:\\"
+                matching_files = search_files_by_type(directory_to_scan, file_extension)
+                print("\nMatching Files:")
+                for file in matching_files:
+                    print(file)
+                print("-" * 40)
+                continue
             elif option.lower() == "q":
                 print("Exiting program. Goodbye!")
                 sys.exit()
@@ -158,7 +178,7 @@ if __name__ == "__main__":
                         directory_data = previous_scans.pop()
                         print("\nRestored previous scan:\n" + "-" * 40)
                         for i, (directory, size, largest_item) in enumerate(directory_data):
-                            print(f"{i+1:>2}. {directory:<48} | {format_size(size):>10} | Largest File: {largest_item[0]:<50} ({format_size(largest_item[1])})")
+                            print(f"{i+1:>2}. {directory:<48} | {format_size(size):>10} | Largest Item: {largest_item[0]:<50} ({format_size(largest_item[1])})")
                     else:
                         break  # Exit the inner loop and go back to the main menu
                 else:
