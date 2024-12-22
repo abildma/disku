@@ -1,7 +1,3 @@
-Sure! Below is a sample `README.md` file that you can use for your program.
-
----
-
 # Directory Size & Cleanup Utility
 
 ## Overview
