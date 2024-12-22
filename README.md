@@ -11,15 +11,8 @@ The program uses multi-threading to speed up directory scanning and includes sev
 - **Delete files and folders** directly from the interface.
 - **Backtrack to previous scans** to explore different directories.
 - **Multi-threaded scanning** for faster results on large directories.
-
-## Requirements
-- Python 3.6 or higher
-- Standard Python libraries (no additional dependencies required)
-
-## Usage
-
+- 
 ### Running the Program
-
 1. **Choose the directory to scan**:
    Upon running the program, you will be presented with the following options:
    - `1`: Scan the entire PC (`C:\` drive)
