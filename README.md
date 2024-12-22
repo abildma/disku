@@ -13,6 +13,7 @@ The program uses multi-threading to speed up directory scanning and includes sev
 - **Multi-threaded scanning** for faster results on large directories.
 - 
 ### Running the Program
+Use CMD/Powershell and run the disku.exe
 1. **Choose the directory to scan**:
    Upon running the program, you will be presented with the following options:
    - `1`: Scan the entire PC (`C:\` drive)
