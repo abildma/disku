@@ -92,7 +92,7 @@ def scan_directory(directory_to_scan):
     scanned_dirs = 0
 
     # Print scanning message once
-    # print(f"\nScanning {directory_to_scan}...\n" + "-" * 100)
+   # print(f"\nScanning {directory_to_scan}...\n" + "-" * 104)
 
     # Use ThreadPoolExecutor for multi-threading
     with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
@@ -210,6 +210,7 @@ if __name__ == "__main__":
         # Print summary with numbered options for further exploration
         print("\n\n" + "-" * 104)
         print("Enter the number of the directory you want to explore further,")
+        print("File extension search followed by number ex: txt1")  
         print("'d' followed by a number to delete")
         print("'o' followed by a number to open in file explorer")
         print("'g' followed by a number to navigate to the largest folder")
@@ -238,9 +239,9 @@ if __name__ == "__main__":
                         print("\n" + "-" * 104)
                         print("Restored previous scan:")
                         for i, (directory, size, largest_item) in enumerate(directory_data):
-                            print(f"{i+1:>2}. {truncate_name(directory, 30):<30} | {format_size(size):>10} | Largest: {truncate_name(largest_item[0], 30):<30} | {format_size(largest_item[1]):>10} |")
-                    else:
-                        break  # Exit the inner loop and go back to the main menu
+                            directory_name = os.path.basename(directory)
+                            largest_item_name = os.path.basename(largest_item[0])
+                            print(f"{i+1:>2}. {truncate_name(directory_name, 30):<30} | {format_size(size):>10} | Largest: {truncate_name(largest_item_name, 30):<30} | {format_size(largest_item[1]):>10} |")
                 else:
                     break  # Exit the inner loop and go back to the main menu
             elif explore_option.lower().startswith("d"):
@@ -289,15 +290,36 @@ if __name__ == "__main__":
                     print("Invalid input. Please enter a valid number after 'g'.")
             else:
                 try:
-                    explore_index = int(explore_option) - 1
-                    if 0 <= explore_index < len(directory_data):
-                        explore_directory = directory_data[explore_index][0]
-        #                print(f"\nScanning {explore_directory}...\n" + "-" * 104)
-                        previous_scans.append(directory_data)
-                        directory_data = scan_directory(explore_directory)
-                        directory_to_scan = explore_directory  # Update the current directory
-                        break  # Exit the inner loop and go back to the main menu
+                    # Check if the input is a file type search command
+                    file_types = [
+                        'txt', 'gif', 'html', 'jpeg', 'png', 'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx',
+                        'mp3', 'wav', 'mp4', 'avi', 'mkv', 'mov', 'flv', 'wmv', 'zip', 'rar', '7z', 'tar', 'gz',
+                        'bmp', 'tiff', 'svg', 'ico', 'exe', 'dll', 'sys', 'bat', 'cmd', 'sh', 'py', 'java', 'class',
+                        'cpp', 'c', 'h', 'cs', 'js', 'ts', 'json', 'xml', 'csv', 'md', 'log', 'ini', 'cfg', 'conf'
+                    ]
+                    if any(explore_option.lower().startswith(ext) for ext in file_types):
+                        file_extension = ''.join(filter(str.isalpha, explore_option))
+                        search_index = int(''.join(filter(str.isdigit, explore_option))) - 1
+                        if 0 <= search_index < len(directory_data):
+                            search_directory = directory_data[search_index][0]
+                            matching_files = search_files_by_type(search_directory, f".{file_extension}")
+                            print("\n" + "-" * 104)
+                            print(f"Matching Files for .{file_extension}:")
+                            for file in matching_files:
+                                print(file)
+                            print("-" * 104)
+                        else:
+                            print("Invalid number. Please try again.")
                     else:
-                        print("Invalid number. Please try again.")
+                        explore_index = int(explore_option) - 1
+                        if 0 <= explore_index < len(directory_data):
+                            explore_directory = directory_data[explore_index][0]
+                          #  print(f"\nScanning {explore_directory}...\n" + "-" * 104)
+                            previous_scans.append(directory_data)
+                            directory_data = scan_directory(explore_directory)
+                            directory_to_scan = explore_directory  # Update the current directory
+                            break  # Exit the inner loop and go back to the main menu
+                        else:
+                            print("Invalid number. Please try again.")
                 except ValueError:
-                    print("Invalid input. Please enter a number.")
+                    print("Invalid input. Please enter a number or a valid file type search command.")
