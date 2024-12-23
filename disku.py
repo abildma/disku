@@ -2,6 +2,7 @@ import os
 import concurrent.futures
 import sys
 import shutil
+import hashlib
 
 # Function to get the size of a directory and find the largest file/folder
 def get_directory_size_and_largest(path):
@@ -156,6 +157,89 @@ def truncate_name(name, length):
         return name[:length-3] + '...'
     return name
 
+# Function to find duplicate files by extension
+def find_duplicate_files_by_extension(directory_to_scan, file_extension):
+    """
+    Finds duplicate files with the given extension in the specified directory based on file size and hash.
+
+    Args:
+        directory_to_scan (str): The directory path to search within.
+        file_extension (str): The file extension to search for.
+
+    Returns:
+        dict: A dictionary where the keys are file hashes and the values are lists of file paths.
+    """
+    file_hashes = {}
+    for root, dirs, files in os.walk(directory_to_scan):
+        for file in files:
+            if file.endswith(file_extension):
+                file_path = os.path.join(root, file)
+                try:
+                    file_size = os.path.getsize(file_path)
+                    file_hash = hashlib.md5(open(file_path, 'rb').read()).hexdigest()
+                    if file_hash in file_hashes:
+                        file_hashes[file_hash].append(file_path)
+                    else:
+                        file_hashes[file_hash] = [file_path]
+                except OSError:
+                    pass
+    duplicates = {hash: paths for hash, paths in file_hashes.items() if len(paths) > 1}
+    return duplicates
+
+# Function to summarize disk usage by file type
+def summarize_by_file_type(directory_to_scan):
+    """
+    Summarizes disk usage by file type in the specified directory.
+
+    Args:
+        directory_to_scan (str): The directory path to scan.
+
+    Returns:
+        dict: A dictionary where the keys are file extensions and the values are total sizes.
+    """
+    file_type_summary = {}
+    for root, dirs, files in os.walk(directory_to_scan):
+        for file in files:
+            file_path = os.path.join(root, file)
+            file_extension = os.path.splitext(file)[1].lower()
+            try:
+                file_size = os.path.getsize(file_path)
+                if file_extension in file_type_summary:
+                    file_type_summary[file_extension] += file_size
+                else:
+                    file_type_summary[file_extension] = file_size
+            except OSError:
+                pass
+
+    # Sort the summary by total size in descending order
+    sorted_summary = dict(sorted(file_type_summary.items(), key=lambda item: item[1], reverse=True))
+    return sorted_summary
+
+def print_summary_in_columns(summary):
+    """
+    Prints the summary in a formatted way using multiple columns.
+
+    Args:
+        summary (dict): The summary dictionary to print.
+    """
+    items = list(summary.items())
+    max_key_length = max(len(key) for key, _ in items)
+    max_value_length = max(len(format_size(value)) for _, value in items)
+    column_width = max_key_length + max_value_length + 5
+
+    # Get the terminal width
+    terminal_width = shutil.get_terminal_size().columns
+
+    # Calculate the number of columns that can fit in the terminal width
+    columns = max(1, terminal_width // column_width)
+
+    for i in range(0, len(items), columns):
+        row_items = items[i:i + columns]
+        row_str = ""
+        for key, value in row_items:
+            row_str += f"{key:<{max_key_length}} {format_size(value):>{max_value_length}}".ljust(column_width)
+        print(row_str)
+
 if __name__ == "__main__":
     previous_scans = []
 
@@ -214,6 +298,8 @@ if __name__ == "__main__":
         print("'d' followed by a number to delete")
         print("'o' followed by a number to open in file explorer")
         print("'g' followed by a number to navigate to the largest folder")
+        print("'f' followed by a number and file extension to find duplicate files (e.g., f1jpeg)")
+        print("'s' followed by a number to summarize disk usage by file type")
         print("'b' to go back, or 'q' to quit:")
         print("-" * 104)
         print("Summary:")
@@ -233,15 +319,13 @@ if __name__ == "__main__":
                 sys.exit()
             elif explore_option.lower() == "b":
                 if previous_scans:
-                    previous_scans.pop()  # Remove the current scan
-                    if previous_scans:
-                        directory_data = previous_scans.pop()
-                        print("\n" + "-" * 104)
-                        print("Restored previous scan:")
-                        for i, (directory, size, largest_item) in enumerate(directory_data):
-                            directory_name = os.path.basename(directory)
-                            largest_item_name = os.path.basename(largest_item[0])
-                            print(f"{i+1:>2}. {truncate_name(directory_name, 30):<30} | {format_size(size):>10} | Largest: {truncate_name(largest_item_name, 30):<30} | {format_size(largest_item[1]):>10} |")
+                    directory_data = previous_scans.pop()
+                    print("\n" + "-" * 104)
+                    print("Restored previous scan:")
+                    for i, (directory, size, largest_item) in enumerate(directory_data):
+                        directory_name = os.path.basename(directory)
+                        largest_item_name = os.path.basename(largest_item[0])
+                        print(f"{i+1:>2}. {truncate_name(directory_name, 30):<30} | {format_size(size):>10} | Largest: {truncate_name(largest_item_name, 30):<30} | {format_size(largest_item[1]):>10} |")
                 else:
                     break  # Exit the inner loop and go back to the main menu
             elif explore_option.lower().startswith("d"):
@@ -254,7 +338,6 @@ if __name__ == "__main__":
                             delete_item(item_to_delete)
                             print(f"'{item_to_delete}' has been deleted.")
                             # Rescan the current directory
-                            previous_scans.pop()  # Remove the current scan
                             directory_data = scan_directory(directory_to_scan)
                             previous_scans.append(directory_data)
                         else:
@@ -288,6 +371,38 @@ if __name__ == "__main__":
                         print("Invalid number. Please try again.")
                 except ValueError:
                     print("Invalid input. Please enter a valid number after 'g'.")
+            elif explore_option.lower().startswith("f"):
+                try:
+                    search_index = int(''.join(filter(str.isdigit, explore_option))) - 1
+                    file_extension = ''.join(filter(str.isalpha, explore_option[1:]))
+                    if 0 <= search_index < len(directory_data):
+                        search_directory = directory_data[search_index][0]
+                        duplicates = find_duplicate_files_by_extension(search_directory, f".{file_extension}")
+                        print("\n" + "-" * 104)
+                        print(f"Duplicate Files for .{file_extension}:")
+                        for file_hash, paths in duplicates.items():
+                            print(f"Hash: {file_hash}")
+                            for path in paths:
+                                print(f"  {path}")
+                        print("-" * 104)
+                    else:
+                        print("Invalid number. Please try again.")
+                except ValueError:
+                    print("Invalid input. Please enter a valid number and file extension after 'f'.")
+            elif explore_option.lower().startswith("s"):
+                try:
+                    search_index = int(explore_option[1:]) - 1
+                    if 0 <= search_index < len(directory_data):
+                        search_directory = directory_data[search_index][0]
+                        file_type_summary = summarize_by_file_type(search_directory)
+                        print("\n" + "-" * 104)
+                        print("Disk Usage by File Type:")
+                        print_summary_in_columns(file_type_summary)
+                        print("-" * 104)
+                    else:
+                        print("Invalid number. Please try again.")
+                except ValueError:
+                    print("Invalid input. Please enter a valid number after 's'.")
             else:
                 try:
                     # Check if the input is a file type search command
@@ -314,7 +429,6 @@ if __name__ == "__main__":
                         explore_index = int(explore_option) - 1
                         if 0 <= explore_index < len(directory_data):
                             explore_directory = directory_data[explore_index][0]
-                          #  print(f"\nScanning {explore_directory}...\n" + "-" * 104)
                             previous_scans.append(directory_data)
                             directory_data = scan_directory(explore_directory)
                             directory_to_scan = explore_directory  # Update the current directory
