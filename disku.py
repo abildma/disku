@@ -3,6 +3,21 @@ import concurrent.futures
 import sys
 import shutil
 import hashlib
+from prompt_toolkit import prompt
+from prompt_toolkit.completion import WordCompleter
+
+# List of possible file types
+file_types = [
+    'txt', 'gif', 'html', 'jpeg', 'jpg', 'png', 'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx',
+    'mp3', 'wav', 'mp4', 'avi', 'mkv', 'mov', 'flv', 'wmv', 'zip', 'rar', '7z', 'tar', 'gz',
+    'bmp', 'tiff', 'svg', 'ico', 'exe', 'dll', 'sys', 'bat', 'cmd', 'sh', 'py', 'java', 'class',
+    'cpp', 'c', 'h', 'cs', 'js', 'ts', 'json', 'xml', 'csv', 'md', 'log', 'ini', 'cfg', 'conf'
+]
+
+# Function to suggest file extensions based on partial input
+def suggest_file_extension(partial):
+    suggestions = [ext for ext in file_types if ext.startswith(partial)]
+    return suggestions
 
 # Function to get the size of a directory and find the largest file/folder
 def get_directory_size_and_largest(path):
@@ -93,7 +108,7 @@ def scan_directory(directory_to_scan):
     scanned_dirs = 0
 
     # Print scanning message once
-   # print(f"\nScanning {directory_to_scan}...\n" + "-" * 104)
+   # print(f"\nScanning {directory_to_scan}...\n")
 
     # Use ThreadPoolExecutor for multi-threading
     with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
@@ -109,7 +124,7 @@ def scan_directory(directory_to_scan):
                     directory_data.append(result)
                 scanned_dirs += 1
                 progress = (scanned_dirs / total_dirs) * 100
-                print(f"\rScanning... {progress:.2f}% complete", end="")
+       #         print(f"\rScanning... {progress:.2f}% complete", end="")
             except Exception as e:
                 print(f"Error processing directory {dir_name}: {e}", file=sys.stderr)
 
@@ -240,6 +255,12 @@ def print_summary_in_columns(summary):
             row_str += f"{key:<{max_key_length}} {format_size(value):>{max_value_length}}".ljust(column_width)
         print(row_str)
 
+# Function to capture user input with suggestions using prompt_toolkit
+def input_with_suggestions(prompt_text):
+    completer = WordCompleter(file_types, ignore_case=True)
+    user_input = prompt(prompt_text, completer=completer)
+    return user_input
+
 if __name__ == "__main__":
     previous_scans = []
 
@@ -269,7 +290,7 @@ if __name__ == "__main__":
                     print("Invalid input. Please enter a number.")
                     continue
             elif option == "4":
-                file_extension = input("Enter the file extension to search for (e.g., .txt): ")
+                file_extension = input_with_suggestions("Enter the file extension to search for (e.g., .txt): ")
                 directory_to_scan = input("Enter the directory to search for file types (leave empty for entire PC): ") or "C:\\"
                 matching_files = search_files_by_type(directory_to_scan, file_extension)
                 print("\n" + "-" * 104)
@@ -293,8 +314,9 @@ if __name__ == "__main__":
 
         # Print summary with numbered options for further exploration
         print("\n\n" + "-" * 104)
-        print("Enter the number of the directory you want to explore further,")
-        print("File extension search followed by number ex: txt1")  
+        print(f"\nScanning {directory_to_scan}... \n")
+        print("Enter the number of the directory you want to explore further")
+        print("File extension search followed by number ex: txt1, py4, jpeg3")  
         print("'d' followed by a number to delete")
         print("'o' followed by a number to open in file explorer")
         print("'g' followed by a number to navigate to the largest folder")
@@ -332,7 +354,7 @@ if __name__ == "__main__":
                 try:
                     delete_index = int(explore_option[1:]) - 1
                     if 0 <= delete_index < len(directory_data):
-                        item_to_delete = directory_data[delete_index][2][0]  # Delete the largest folder
+                        item_to_delete = directory_data[delete_index][0]  # Delete the directory itself
                         confirm_delete = input(f"Are you sure you want to delete '{item_to_delete}'? (y/n): ")
                         if confirm_delete.lower() == "y":
                             delete_item(item_to_delete)
@@ -350,7 +372,7 @@ if __name__ == "__main__":
                 try:
                     open_index = int(explore_option[1:]) - 1
                     if 0 <= open_index < len(directory_data):
-                        item_to_open = directory_data[open_index][2][0]  # Open the largest folder
+                        item_to_open = directory_data[open_index][0]  # Open the directory itself
                         os.startfile(item_to_open)
                         print(f"Opened {item_to_open} in file explorer.")
                     else:
@@ -406,12 +428,6 @@ if __name__ == "__main__":
             else:
                 try:
                     # Check if the input is a file type search command
-                    file_types = [
-                        'txt', 'gif', 'html', 'jpeg', 'png', 'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx',
-                        'mp3', 'wav', 'mp4', 'avi', 'mkv', 'mov', 'flv', 'wmv', 'zip', 'rar', '7z', 'tar', 'gz',
-                        'bmp', 'tiff', 'svg', 'ico', 'exe', 'dll', 'sys', 'bat', 'cmd', 'sh', 'py', 'java', 'class',
-                        'cpp', 'c', 'h', 'cs', 'js', 'ts', 'json', 'xml', 'csv', 'md', 'log', 'ini', 'cfg', 'conf'
-                    ]
                     if any(explore_option.lower().startswith(ext) for ext in file_types):
                         file_extension = ''.join(filter(str.isalpha, explore_option))
                         search_index = int(''.join(filter(str.isdigit, explore_option))) - 1
